@@ -1,0 +1,196 @@
+{% extends "todos/base.html" %}
+
+{% block title %}TODO List - TODO App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        color: #ccc;
+    }
+    .empty-state-text {
+        color: #999;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="mb-4">📋 My TODOs</h1>
+        
+        {% if total_count > 0 %}
+        <div class="row stats-row">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_count }}</div>
+                    <div class="stat-label">Total TODOs</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-number">{{ pending_count }}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-number">{{ completed_count }}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <a href="{% url 'todo-create' %}" class="btn btn-primary mb-4">+ Add New TODO</a>
+    </div>
+</div>
+
+{% if todos %}
+    <div class="row">
+        <div class="col-md-12">
+            {% for todo in todos %}
+            <div class="card todo-item {% if todo.is_resolved %}completed{% elif todo.is_overdue %}overdue{% endif %}">
+                <div class="card-body">
+                    <div class="row align-items-start">
+                        <div class="col-md-8">
+                            <h5 class="card-title todo-title {% if todo.is_resolved %}completed{% endif %}">
+                                {{ todo.title }}
+                            </h5>
+                            {% if todo.description %}
+                            <p class="card-text text-muted" style="font-size: 14px; margin-bottom: 10px;">
+                                {{ todo.description|truncatewords:20 }}
+                            </p>
+                            {% endif %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% if todo.due_date %}
+                                <span class="badge bg-info">
+                                    📅 Due: {{ todo.due_date|date:"M d, Y" }}
+                                </span>
+                                {% if todo.is_overdue %}
+                                <span class="badge bg-danger">Overdue</span>
+                                {% endif %}
+                                {% endif %}
+                                {% if todo.is_resolved %}
+                                <span class="badge bg-success">✓ Completed</span>
+                                {% else %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="btn-group action-buttons" role="group">
+                                <a href="{% url 'todo-edit' todo.pk %}" class="btn btn-sm btn-outline-primary btn-small">
+                                    ✏️ Edit
+                                </a>
+                                <a href="{% url 'todo-delete' todo.pk %}" class="btn btn-sm btn-outline-danger btn-small">
+                                    🗑️ Delete
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-small toggle-btn" 
+                                        data-todo-id="{{ todo.pk }}" 
+                                        data-current-status="{{ todo.is_resolved }}">
+                                    {% if todo.is_resolved %}✗ Reopen{% else %}✓ Done{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="card">
+        <div class="card-body empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-text">
+                <h4>No TODOs yet</h4>
+                <p>Create your first TODO to get started!</p>
+            </div>
+            <a href="{% url 'todo-create' %}" class="btn btn-primary">Create Your First TODO</a>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const todoId = this.getAttribute('data-todo-id');
+        const currentStatus = this.getAttribute('data-current-status') === 'True';
+        
+        fetch(`/todos/${todoId}/toggle/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "todos/base.html" %}
+
+{% block title %}Delete TODO - TODO App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h2 class="card-title mb-4 text-danger">⚠️ Delete TODO</h2>
+                
+                <p class="lead">
+                    Are you sure you want to delete the following TODO?
+                </p>
+                
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ object.title }}</h5>
+                        {% if object.description %}
+                        <p class="card-text text-muted">{{ object.description }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <p class="text-muted small">This action cannot be undone.</p>
+                
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        🗑️ Yes, Delete TODO
+                    </button>
+                    <a href="{% url 'todo-list' %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

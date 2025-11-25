@@ -1,0 +1,17 @@
+[project]
+name = "django-todo-app"
+version = "0.1.0"
+description = "A Django TODO application with CRUD operations"
+requires-python = ">=3.10"
+dependencies = [
+    "Django>=4.2",
+    "pytest>=7.0",
+    "pytest-django>=4.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0",
+    "flake8>=6.0",
+    "isort>=5.0",
+]
