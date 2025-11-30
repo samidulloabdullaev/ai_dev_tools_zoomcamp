@@ -4,10 +4,17 @@ import CodeEditor from './components/CodeEditor';
 
 const socket = io('http://localhost:3001'); // Connect to backend
 
+const languageTemplates = {
+    javascript: '// Write your JavaScript code here\nconsole.log("Hello, World!");',
+    python: '# Write your Python code here\nprint("Hello, World!")',
+    cpp: '// Write your C++ code here\n#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}',
+    java: '// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}'
+};
+
 function App() {
     const [roomId, setRoomId] = useState('');
     const [joined, setJoined] = useState(false);
-    const [code, setCode] = useState('// Write your code here');
+    const [code, setCode] = useState(languageTemplates.javascript);
     const [language, setLanguage] = useState('javascript');
     const [output, setOutput] = useState('');
 
@@ -25,6 +32,11 @@ function App() {
             socket.off('code-change');
         };
     }, []);
+
+    const handleLanguageChange = (newLanguage) => {
+        setLanguage(newLanguage);
+        setCode(languageTemplates[newLanguage]);
+    };
 
     const joinRoom = () => {
         if (roomId) {
@@ -93,7 +105,7 @@ function App() {
                     <h1 className="text-xl font-bold text-blue-400">Room: {roomId}</h1>
                     <select
                         value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
                         className="bg-gray-700 text-white p-2 rounded border border-gray-600 focus:outline-none"
                     >
                         <option value="javascript">JavaScript</option>

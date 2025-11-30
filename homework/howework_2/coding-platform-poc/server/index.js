@@ -6,6 +6,10 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+app.get('/', (req, res) => {
+  res.send('Coding Platform Backend is running');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -57,12 +61,21 @@ const path = require('path');
 
 const executeCode = (language, code) => {
   return new Promise((resolve, reject) => {
-    const fileName = `temp_${Date.now()}.${language === 'python' ? 'py' : 'js'}`;
+    // Map language to file extension and command
+    const langConfig = {
+      'javascript': { ext: 'js', cmd: 'node' },
+      'python': { ext: 'py', cmd: 'python3' },
+      'java': { ext: 'java', cmd: 'java' },
+      'cpp': { ext: 'cpp', cmd: 'g++' }
+    };
+
+    const config = langConfig[language] || langConfig['javascript'];
+    const fileName = `temp_${Date.now()}.${config.ext}`;
     const filePath = path.join(__dirname, fileName);
 
     fs.writeFileSync(filePath, code);
 
-    const command = language === 'python' ? `python3 ${filePath}` : `node ${filePath}`;
+    const command = `${config.cmd} ${filePath}`;
 
     exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
       fs.unlinkSync(filePath); // Cleanup
