@@ -40,9 +40,25 @@ function App() {
         }
     };
 
-    const runCode = () => {
-        // Mock execution for PoC
-        setOutput(`Running ${language} code...\n\n(Execution logic to be implemented)\n\nCode length: ${code.length} chars`);
+    const runCode = async () => {
+        setOutput(`Running ${language} code...`);
+        try {
+            const response = await fetch('http://localhost:3001/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code, language }),
+            });
+            const data = await response.json();
+            if (data.error) {
+                setOutput(`Error: ${data.error}`);
+            } else {
+                setOutput(data.output || 'No output');
+            }
+        } catch (error) {
+            setOutput(`Error: ${error.message}`);
+        }
     };
 
     if (!joined) {

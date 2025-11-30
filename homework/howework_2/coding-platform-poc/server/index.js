@@ -39,4 +39,46 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
+app.use(express.json());
+
+app.post('/execute', async (req, res) => {
+  const { code, language } = req.body;
+  try {
+    const output = await executeCode(language, code);
+    res.json({ output });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+const executeCode = (language, code) => {
+  return new Promise((resolve, reject) => {
+    const fileName = `temp_${Date.now()}.${language === 'python' ? 'py' : 'js'}`;
+    const filePath = path.join(__dirname, fileName);
+
+    fs.writeFileSync(filePath, code);
+
+    const command = language === 'python' ? `python3 ${filePath}` : `node ${filePath}`;
+
+    exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
+      fs.unlinkSync(filePath); // Cleanup
+
+      if (error) {
+        // If it's a timeout, error.killed will be true
+        if (error.killed) {
+          resolve('Error: Execution timed out (5s limit)');
+        } else {
+          resolve(stderr || error.message);
+        }
+      } else {
+        resolve(stdout);
+      }
+    });
+  });
+};
+
 module.exports = { app, server, io };
