@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { io, Socket } from 'socket.io-client';
 import { getDefaultLanguage, getLanguageById, Language } from '@/lib/languages';
 
 export interface Participant {
@@ -7,6 +8,7 @@ export interface Participant {
   name: string;
   isHost: boolean;
   joinedAt: Date;
+  socketId?: string;
 }
 
 export interface ConsoleMessage {
@@ -27,192 +29,174 @@ export interface InterviewRoom {
   createdAt: Date;
 }
 
-// Simulated real-time state (in production, this would use WebSockets)
-export const rooms = new Map<string, InterviewRoom>();
-
-// Check if a room exists without joining
-export const checkRoomExists = (roomId: string): boolean => {
-  return rooms.has(roomId);
-};
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 export const useInterviewRoom = (roomId?: string) => {
   const [room, setRoom] = useState<InterviewRoom | null>(null);
   const [currentUser, setCurrentUser] = useState<Participant | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
-  const createRoom = useCallback((hostName: string, title: string = 'Interview Session'): string => {
-    const newRoomId = uuidv4().substring(0, 8);
-    const defaultLang = getDefaultLanguage();
-    
-    const host: Participant = {
-      id: uuidv4(),
-      name: hostName,
-      isHost: true,
-      joinedAt: new Date(),
-    };
-
-    const newRoom: InterviewRoom = {
-      id: newRoomId,
-      title,
-      code: defaultLang.defaultCode,
-      language: defaultLang,
-      participants: [host],
-      consoleMessages: [{
-        id: uuidv4(),
-        type: 'info',
-        content: 'Machine Ready',
-        timestamp: new Date(),
-      }],
-      createdAt: new Date(),
-    };
-
-    rooms.set(newRoomId, newRoom);
-    setRoom(newRoom);
-    setCurrentUser(host);
-    setIsConnected(true);
-    setIsLoading(false);
-
-    return newRoomId;
-  }, []);
-
-  const joinRoom = useCallback((roomIdToJoin: string, userName: string): boolean => {
-    const existingRoom = rooms.get(roomIdToJoin);
-    
-    if (!existingRoom) {
-      setIsLoading(false);
-      return false;
-    }
-
-    const participant: Participant = {
-      id: uuidv4(),
-      name: userName,
-      isHost: false,
-      joinedAt: new Date(),
-    };
-
-    existingRoom.participants.push(participant);
-    existingRoom.consoleMessages.push({
-      id: uuidv4(),
-      type: 'info',
-      content: `${userName} joined the session`,
-      timestamp: new Date(),
+  // Initialize socket connection
+  useEffect(() => {
+    socketRef.current = io(SOCKET_URL, {
+      autoConnect: false,
     });
 
-    rooms.set(roomIdToJoin, existingRoom);
-    setRoom({ ...existingRoom });
-    setCurrentUser(participant);
-    setIsConnected(true);
-    setIsLoading(false);
+    const socket = socketRef.current;
 
-    return true;
+    socket.on('connect', () => {
+      console.log('Socket connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+      setIsConnected(false);
+    });
+
+    socket.on('room:updated', (updatedRoom: InterviewRoom) => {
+      setRoom(updatedRoom);
+    });
+
+    socket.on('participant:joined', (participant: Participant) => {
+      console.log('Participant joined:', participant.name);
+    });
+
+    socket.on('participant:left', (participantId: string) => {
+      console.log('Participant left:', participantId);
+    });
+
+    socket.on('error', (message: string) => {
+      console.error('Socket error:', message);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  const updateCode = useCallback((newCode: string) => {
-    if (!room) return;
+  const createRoom = useCallback(
+    (hostName: string, title: string = 'Interview Session'): string => {
+      const socket = socketRef.current;
+      if (!socket) return '';
 
-    const updatedRoom = { ...room, code: newCode };
-    rooms.set(room.id, updatedRoom);
-    setRoom(updatedRoom);
-  }, [room]);
+      let createdRoomId = '';
 
-  const updateLanguage = useCallback((languageId: string) => {
-    if (!room) return;
+      socket.connect();
+      socket.emit('room:create', { hostName, title }, (roomId: string) => {
+        createdRoomId = roomId;
+        setIsConnected(true);
+        setIsLoading(false);
 
-    const newLang = getLanguageById(languageId);
-    if (!newLang) return;
+        // Set current user as host
+        const host: Participant = {
+          id: uuidv4(),
+          name: hostName,
+          isHost: true,
+          joinedAt: new Date(),
+        };
+        setCurrentUser(host);
+      });
 
-    const updatedRoom = { 
-      ...room, 
-      language: newLang,
-      code: newLang.defaultCode,
-    };
-    rooms.set(room.id, updatedRoom);
-    setRoom(updatedRoom);
+      return createdRoomId;
+    },
+    []
+  );
 
-    addConsoleMessage('info', `Language changed to ${newLang.name}`);
-  }, [room]);
+  const joinRoom = useCallback(
+    (roomIdToJoin: string, userName: string): boolean => {
+      const socket = socketRef.current;
+      if (!socket) return false;
 
-  const addConsoleMessage = useCallback((type: ConsoleMessage['type'], content: string, author?: string) => {
-    if (!room) return;
+      socket.connect();
+      socket.emit('room:join', { roomId: roomIdToJoin, userName }, (success: boolean) => {
+        if (success) {
+          setIsConnected(true);
+          setIsLoading(false);
 
-    const message: ConsoleMessage = {
-      id: uuidv4(),
-      type,
-      content,
-      timestamp: new Date(),
-      author,
-    };
+          const participant: Participant = {
+            id: uuidv4(),
+            name: userName,
+            isHost: false,
+            joinedAt: new Date(),
+          };
+          setCurrentUser(participant);
+        } else {
+          setIsLoading(false);
+        }
+      });
 
-    const updatedRoom = {
-      ...room,
-      consoleMessages: [...room.consoleMessages, message],
-    };
-    rooms.set(room.id, updatedRoom);
-    setRoom(updatedRoom);
-  }, [room]);
+      return true;
+    },
+    []
+  );
+
+  const updateCode = useCallback(
+    (newCode: string) => {
+      const socket = socketRef.current;
+      if (!socket || !room) return;
+
+      // Optimistically update local state
+      setRoom((prev) => (prev ? { ...prev, code: newCode } : null));
+
+      // Emit to server
+      socket.emit('code:update', newCode);
+    },
+    [room]
+  );
+
+  const updateLanguage = useCallback(
+    (languageId: string) => {
+      const socket = socketRef.current;
+      if (!socket || !room) return;
+
+      const newLang = getLanguageById(languageId);
+      if (!newLang) return;
+
+      socket.emit('language:change', languageId);
+    },
+    [room]
+  );
+
+  const addConsoleMessage = useCallback(
+    (type: ConsoleMessage['type'], content: string, author?: string) => {
+      const socket = socketRef.current;
+      if (!socket || !room) return;
+
+      const message = {
+        type,
+        content,
+        author,
+      };
+
+      socket.emit('console:message', message);
+    },
+    [room]
+  );
 
   const clearConsole = useCallback(() => {
-    if (!room) return;
+    const socket = socketRef.current;
+    if (!socket || !room) return;
 
-    const updatedRoom = {
-      ...room,
-      consoleMessages: [{
-        id: uuidv4(),
-        type: 'info' as const,
-        content: 'Console cleared',
-        timestamp: new Date(),
-      }],
-    };
-    rooms.set(room.id, updatedRoom);
-    setRoom(updatedRoom);
+    socket.emit('console:clear');
   }, [room]);
 
   const leaveRoom = useCallback(() => {
-    if (!room || !currentUser) return;
+    const socket = socketRef.current;
+    if (!socket) return;
 
-    const updatedParticipants = room.participants.filter(p => p.id !== currentUser.id);
-    
-    if (updatedParticipants.length === 0) {
-      rooms.delete(room.id);
-    } else {
-      const updatedRoom = { ...room, participants: updatedParticipants };
-      rooms.set(room.id, updatedRoom);
-    }
+    socket.emit('room:leave');
+    socket.disconnect();
 
     setRoom(null);
     setCurrentUser(null);
     setIsConnected(false);
-  }, [room, currentUser]);
+  }, []);
 
-  // Poll for updates (simulating real-time)
+  // Set loading to false initially if no roomId
   useEffect(() => {
-    if (!room?.id || !isConnected) return;
-
-    pollingRef.current = setInterval(() => {
-      const latestRoom = rooms.get(room.id);
-      if (latestRoom && JSON.stringify(latestRoom) !== JSON.stringify(room)) {
-        setRoom({ ...latestRoom });
-      }
-    }, 500);
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [room?.id, isConnected]);
-
-  // Check if room exists on mount
-  useEffect(() => {
-    if (roomId) {
-      const existingRoom = rooms.get(roomId);
-      if (existingRoom) {
-        setRoom(existingRoom);
-      }
-      setIsLoading(false);
-    } else {
+    if (!roomId) {
       setIsLoading(false);
     }
   }, [roomId]);
@@ -230,4 +214,11 @@ export const useInterviewRoom = (roomId?: string) => {
     clearConsole,
     leaveRoom,
   };
+};
+
+// For compatibility with the Index page
+export const checkRoomExists = (roomId: string): boolean => {
+  // This would need to be implemented via a REST endpoint
+  // For now, we'll assume the room exists and handle errors in joinRoom
+  return true;
 };
