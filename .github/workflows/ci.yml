@@ -2,16 +2,16 @@ name: CI Test Runner
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, homework2 ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, homework2 ]
 
 jobs:
   test-server:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./server
+        working-directory: ./homework/howework_2/real_time_coding_platform/server
     steps:
       - uses: actions/checkout@v4
       
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: homework/howework_2/real_time_coding_platform/server/package-lock.json
           
       - name: Install Dependencies
         run: npm ci
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./homework/howework_2/real_time_coding_platform/client
     steps:
       - uses: actions/checkout@v4
       
@@ -41,7 +41,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: homework/howework_2/real_time_coding_platform/client/package-lock.json
           
       - name: Install Dependencies
         run: npm ci

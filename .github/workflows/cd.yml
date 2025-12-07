@@ -2,7 +2,7 @@ name: Deploy to Render
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, homework2 ]
   workflow_run:
     workflows: ["CI Test Runner"]
     types:
