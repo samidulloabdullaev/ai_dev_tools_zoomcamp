@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: real-time-coding-platform
+    env: docker
+    # The directory where Render runs the build command
+    rootDir: homework/howework_2/real_time_coding_platform
+    # Path to the Dockerfile relative to the repository root
+    dockerfilePath: homework/howework_2/real_time_coding_platform/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    # Update from the main branch
+    branch: main

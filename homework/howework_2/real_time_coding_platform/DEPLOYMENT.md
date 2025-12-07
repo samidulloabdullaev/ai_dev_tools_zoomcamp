@@ -13,10 +13,12 @@ Render is excellent for this project because it has native Docker support and a 
 4.  Connect your repository.
 5.  Select the repository `ai_dev_tools_zoomcamp`.
 6.  **Runtime**: Select **Docker**.
-7.  **Environment Variables**:
+7.  **Root Directory**: Enter `homework/howework_2/real_time_coding_platform`
+8.  **Dockerfile Path**: Enter `Dockerfile` (or `./Dockerfile`)
+9.  **Environment Variables**:
     *   Add `NODE_ENV` = `production`
-8.  **Plan**: Select "Free" (or a paid plan for better performance).
-9.  Click **Create Web Service**.
+10. **Plan**: Select "Free" (or a paid plan for better performance).
+11. Click **Create Web Service**.
 
 Render will automatically detect the `Dockerfile`, build your image, and deploy it.
 
