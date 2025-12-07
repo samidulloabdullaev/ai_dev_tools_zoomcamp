@@ -5,7 +5,7 @@ import CodeEditor from '../components/CodeEditor';
 import OutputConsole from '../components/OutputConsole';
 import { runCode } from '../utils/codeRunner';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.MODE === 'production' ? '/' : 'http://localhost:3000');
 
 function Room() {
     const { roomId } = useParams();
