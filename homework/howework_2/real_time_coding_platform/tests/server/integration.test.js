@@ -2,7 +2,7 @@ const request = require('supertest');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const Client = require('socket.io-client');
-const { app, server } = require('../index');
+const { app, server } = require('../../server/index');
 
 describe('API Integration Tests', () => {
 
