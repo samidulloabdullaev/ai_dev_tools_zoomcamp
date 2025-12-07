@@ -233,6 +233,7 @@ body {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  margin-right: 3rem;
 }
 
 .room-id {
@@ -273,7 +274,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 0 1.5rem;
+  height: 72px;
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-color);
   gap: 1rem;
@@ -381,7 +383,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0 1.5rem;
+  height: 72px;
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
